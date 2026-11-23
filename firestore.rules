@@ -1,0 +1,47 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function ownsUser(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    function validJob() {
+      return request.resource.data.keys().hasOnly([
+        'ownerId',
+        'company',
+        'initials',
+        'color',
+        'role',
+        'location',
+        'type',
+        'salary',
+        'stage',
+        'match',
+        'date',
+        'followUp',
+        'skills',
+        'note',
+        'url',
+        'createdAt',
+        'updatedAt'
+      ])
+      && request.resource.data.ownerId == request.auth.uid
+      && request.resource.data.company is string
+      && request.resource.data.role is string
+      && request.resource.data.stage in ['Saved', 'Applied', 'Interview', 'Offer', 'Closed']
+      && request.resource.data.match is number
+      && request.resource.data.skills is list
+      && request.resource.data.note is string;
+    }
+
+    match /users/{userId}/jobs/{jobId} {
+      allow read: if ownsUser(userId);
+      allow create: if ownsUser(userId) && validJob();
+      allow update: if ownsUser(userId)
+        && resource.data.ownerId == request.auth.uid
+        && validJob();
+      allow delete: if ownsUser(userId) && resource.data.ownerId == request.auth.uid;
+    }
+  }
+}

@@ -1,5 +1,8 @@
-import { useMemo, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { initialJobs, stages } from './data/jobs.js'
+import { firebaseConfigured } from './firebase.js'
+
+const AuthScreen = lazy(() => import('./AuthScreen.jsx'))
 
 function Icon({ name, size = 18, strokeWidth = 1.8 }) {
   const paths = {
@@ -28,6 +31,15 @@ function formatToday() {
   return new Intl.DateTimeFormat('en', { weekday: 'long', month: 'long', day: 'numeric' }).format(new Date())
 }
 
+function readDemoJobs() {
+  try {
+    const saved = localStorage.getItem('roletrail-demo-jobs')
+    return saved ? JSON.parse(saved) : initialJobs
+  } catch {
+    return initialJobs
+  }
+}
+
 function AddJobDialog({ onClose, onAdd }) {
   const [form, setForm] = useState({ company: '', role: '', location: '', salary: '', stage: 'Saved', url: '' })
   const [error, setError] = useState('')
@@ -36,13 +48,17 @@ function AddJobDialog({ onClose, onAdd }) {
     setForm((current) => ({ ...current, [event.target.name]: event.target.value }))
   }
 
-  function submit(event) {
+  async function submit(event) {
     event.preventDefault()
     if (!form.company.trim() || !form.role.trim()) {
       setError('Add a company and role to save this listing.')
       return
     }
-    onAdd(form)
+    try {
+      await onAdd(form)
+    } catch {
+      return
+    }
   }
 
   return (
@@ -74,9 +90,8 @@ function StageBadge({ stage }) {
   return <span className={`stage-badge stage-${stage.toLowerCase()}`}><span />{stage}</span>
 }
 
-function JobRow({ job, onStageChange, onToggleNote }) {
+function JobRow({ job, onStageChange, onToggleNote, onRemove }) {
   const [menuOpen, setMenuOpen] = useState(false)
-  const nextStage = job.stage === 'Saved' ? 'Applied' : job.stage === 'Applied' ? 'Interview' : job.stage === 'Interview' ? 'Offer' : 'Closed'
 
   return (
     <article className="job-row">
@@ -91,7 +106,7 @@ function JobRow({ job, onStageChange, onToggleNote }) {
         <button className={`icon-button ${job.note ? 'has-note' : ''}`} type="button" aria-label={job.note ? 'View note' : 'Add note'} onClick={() => onToggleNote(job)}><Icon name="dots" /></button>
         <div className="row-menu-wrap">
           <button className="icon-button" type="button" aria-label={`Change stage for ${job.role} at ${job.company}`} aria-expanded={menuOpen} onClick={() => setMenuOpen((open) => !open)}><Icon name="chevron" /></button>
-          {menuOpen && <div className="row-menu">{stages.slice(1).map((stage) => <button type="button" key={stage} onClick={() => { onStageChange(job.id, stage); setMenuOpen(false) }}>{stage}</button>)}</div>}
+          {menuOpen && <div className="row-menu">{stages.slice(1).map((stage) => <button type="button" key={stage} onClick={() => { onStageChange(job.id, stage); setMenuOpen(false) }}>{stage}</button>)}<span className="menu-rule" /><button className="danger-action" type="button" onClick={() => { onRemove(job); setMenuOpen(false) }}>Remove role</button></div>}
         </div>
       </div>
     </article>
@@ -99,12 +114,64 @@ function JobRow({ job, onStageChange, onToggleNote }) {
 }
 
 function App() {
-  const [jobs, setJobs] = useState(initialJobs)
+  const [user, setUser] = useState(null)
+  const [authReady, setAuthReady] = useState(!firebaseConfigured)
+  const [jobsReady, setJobsReady] = useState(!firebaseConfigured)
+  const [jobs, setJobs] = useState(readDemoJobs)
   const [activeStage, setActiveStage] = useState('All roles')
   const [query, setQuery] = useState('')
   const [showAddDialog, setShowAddDialog] = useState(false)
   const [selectedNote, setSelectedNote] = useState(null)
   const [activeNav, setActiveNav] = useState('Overview')
+  const [appError, setAppError] = useState('')
+
+  useEffect(() => {
+    if (!firebaseConfigured) return undefined
+    let active = true
+    let unsubscribe
+    import('./auth.js').then(({ observeAuth }) => {
+      if (!active) return
+      unsubscribe = observeAuth((currentUser) => {
+        setUser(currentUser)
+        setAuthReady(true)
+        setJobsReady(!currentUser)
+        if (!currentUser) setJobs([])
+      })
+    }).catch(() => setAppError('Firebase Authentication could not start. Check the project settings.'))
+    return () => {
+      active = false
+      unsubscribe?.()
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!user) return undefined
+    let active = true
+    let unsubscribe
+    setJobsReady(false)
+    import('./data/firestore.js').then(({ subscribeToJobs }) => {
+      if (!active) return
+      unsubscribe = subscribeToJobs(user.uid, (records) => {
+        setJobs(records)
+        setJobsReady(true)
+        setAppError('')
+      }, () => {
+        setAppError('Your roles could not be loaded. Check the Firestore rules in the project setup.')
+        setJobsReady(true)
+      })
+    }).catch(() => {
+      setAppError('Firestore could not start. Check the project setup.')
+      setJobsReady(true)
+    })
+    return () => {
+      active = false
+      unsubscribe?.()
+    }
+  }, [user])
+
+  useEffect(() => {
+    if (!firebaseConfigured) localStorage.setItem('roletrail-demo-jobs', JSON.stringify(jobs))
+  }, [jobs])
 
   const filteredJobs = useMemo(() => jobs.filter((job) => {
     const stageMatches = activeStage === 'All roles' || job.stage === activeStage
@@ -121,17 +188,41 @@ function App() {
   const interviews = counts.Interview || 0
   const followUps = jobs.filter((job) => job.followUp).length
 
-  function addJob(form) {
+  if (firebaseConfigured && !authReady) return <div className="app-loading">Opening your workspace…</div>
+  if (firebaseConfigured && !user) return <Suspense fallback={<div className="app-loading">Opening your workspace…</div>}><AuthScreen /></Suspense>
+  if (firebaseConfigured && !jobsReady) return <div className="app-loading">Loading your roles…</div>
+
+  async function addJob(form) {
     const company = form.company.trim()
     const initials = company.split(/\s+/).map((word) => word[0]).slice(0, 2).join('').toUpperCase()
     const today = new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric' }).format(new Date())
-    setJobs((current) => [{ ...form, id: crypto.randomUUID(), company, role: form.role.trim(), initials, color: 'peach', match: 0, date: today, followUp: '', skills: [], note: '' }, ...current])
+    const record = { ...form, company, role: form.role.trim(), initials, color: 'peach', match: 0, date: today, followUp: '', skills: [], note: '', type: 'Full-time', url: form.url.trim() }
+    try {
+      if (user) {
+        const { createJob } = await import('./data/firestore.js')
+        await createJob(user.uid, record)
+      } else {
+        setJobs((current) => [{ ...record, id: crypto.randomUUID() }, ...current])
+      }
+    } catch {
+      setAppError('This role could not be saved. Please try again.')
+      throw new Error('Could not save role')
+    }
     setActiveStage('All roles')
     setQuery('')
     setShowAddDialog(false)
   }
 
-  function changeStage(id, stage) {
+  async function changeStage(id, stage) {
+    if (user) {
+      try {
+        const { updateJob } = await import('./data/firestore.js')
+        await updateJob(user.uid, id, { stage })
+      } catch {
+        setAppError('The application stage could not be updated.')
+      }
+      return
+    }
     setJobs((current) => current.map((job) => job.id === id ? { ...job, stage } : job))
   }
 
@@ -139,9 +230,37 @@ function App() {
     setSelectedNote(job)
   }
 
-  function saveNote(note) {
+  async function saveNote(note) {
+    if (user) {
+      try {
+        const { updateJob } = await import('./data/firestore.js')
+        await updateJob(user.uid, selectedNote.id, { note })
+        setSelectedNote(null)
+      } catch {
+        setAppError('Your note could not be saved.')
+      }
+      return
+    }
     setJobs((current) => current.map((job) => job.id === selectedNote.id ? { ...job, note } : job))
     setSelectedNote(null)
+  }
+
+  async function deleteJob(job) {
+    if (!window.confirm(`Remove ${job.role} at ${job.company}?`)) return
+    if (user) {
+      try {
+        const { removeJob } = await import('./data/firestore.js')
+        await removeJob(user.uid, job.id)
+      } catch {
+        setAppError('This role could not be removed.')
+      }
+      return
+    }
+    setJobs((current) => current.filter((entry) => entry.id !== job.id))
+  }
+
+  function signOutUser() {
+    if (user) import('./auth.js').then(({ endSession }) => endSession()).catch(() => setAppError('Could not sign out. Try again.'))
   }
 
   return (
@@ -160,13 +279,15 @@ function App() {
         <div className="sidebar-bottom">
           <div className="sidebar-tip"><span className="tip-spark">✳</span><p>A little progress, often, adds up.</p><span className="tip-caption">Your search is a process. Keep going.</span></div>
           <button className="nav-item settings-link" type="button" onClick={() => setActiveNav('Settings')}><Icon name="settings" /><span>Settings</span></button>
-          <div className="profile-row"><div className="profile-avatar">DA</div><div className="profile-copy"><strong>Duygu Aykaş</strong><span>Product designer</span></div><Icon name="dots" size={17} /></div>
+          <div className="profile-row"><div className="profile-avatar">{user ? (user.displayName || user.email || 'RT').slice(0, 2).toUpperCase() : 'DA'}</div><div className="profile-copy"><strong>{user?.displayName || user?.email || 'Duygu Aykaş'}</strong><span>{user ? 'Your account' : 'Demo account'}</span></div><Icon name="dots" size={17} /></div>
         </div>
       </aside>
 
       <main className="main-content" id="overview">
-        <header className="topbar"><div className="mobile-brand"><BrandMark /><span>roletrail</span></div><div className="breadcrumb"><span>Workspace</span><Icon name="chevron" size={14} /><strong>{activeNav}</strong></div><div className="topbar-right"><span className="today-label">{formatToday()}</span><div className="topbar-avatar">DA</div></div></header>
+        <header className="topbar"><div className="mobile-brand"><BrandMark /><span>roletrail</span></div><div className="breadcrumb"><span>Workspace</span><Icon name="chevron" size={14} /><strong>{activeNav}</strong></div><div className="topbar-right"><span className="today-label">{formatToday()}</span>{user && <button type="button" className="signout-button" onClick={signOutUser}>Sign out</button>}<div className="topbar-avatar">{user ? (user.displayName || user.email || 'RT').slice(0, 2).toUpperCase() : 'DA'}</div></div></header>
         <div className="page-wrap">
+          {!firebaseConfigured && <div className="demo-banner"><span className="demo-dot" />Demo workspace <span>Roles are saved in this browser. Add Firebase settings to enable sign-in and cloud sync.</span></div>}
+          {appError && <div className="app-error" role="alert">{appError}<button type="button" onClick={() => setAppError('')} aria-label="Dismiss message"><Icon name="close" size={15} /></button></div>}
           <section className="welcome-row"><div><p className="eyebrow">{formatToday()}</p><h1>Your search,<br /><em>in motion.</em></h1><p className="welcome-copy">A clear view of where things stand — and what to do next.</p></div><button className="button button-primary add-button" type="button" onClick={() => setShowAddDialog(true)}><Icon name="plus" size={17} /> Add a role</button></section>
 
           <section className="metrics-grid" aria-label="Application overview">
@@ -178,7 +299,7 @@ function App() {
           <section className="roles-section" aria-labelledby="roles-heading">
             <div className="section-heading"><div><div className="eyebrow">The pipeline</div><h2 id="roles-heading">Your roles <span className="section-count">{String(filteredJobs.length).padStart(2, '0')}</span></h2></div><div className="section-tools"><label className="search-box"><Icon name="search" size={17} /><span className="visually-hidden">Search roles</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search roles" /></label><button className="filter-button" type="button" aria-label="Show all roles" onClick={() => setActiveStage('All roles')}><span className="filter-lines"><i /><i /><i /></span> All stages</button></div></div>
             <div className="stage-tabs" role="tablist" aria-label="Filter roles by stage">{stages.map((stage) => <button className={`stage-tab ${activeStage === stage ? 'active' : ''}`} type="button" role="tab" aria-selected={activeStage === stage} key={stage} onClick={() => setActiveStage(stage)}>{stage}<span>{stage === 'All roles' ? jobs.length : counts[stage] || 0}</span></button>)}</div>
-            <div className="job-list" aria-live="polite">{filteredJobs.length ? filteredJobs.map((job) => <JobRow job={job} key={job.id} onStageChange={changeStage} onToggleNote={openNote} />) : <div className="empty-state"><span className="empty-mark"><Icon name="search" size={22} /></span><h3>No roles found</h3><p>Try another search or choose a different stage.</p><button type="button" className="button button-quiet" onClick={() => { setActiveStage('All roles'); setQuery('') }}>Clear filters</button></div>}</div>
+            <div className="job-list" aria-live="polite">{filteredJobs.length ? filteredJobs.map((job) => <JobRow job={job} key={job.id} onStageChange={changeStage} onToggleNote={openNote} onRemove={deleteJob} />) : <div className="empty-state"><span className="empty-mark"><Icon name="search" size={22} /></span><h3>No roles found</h3><p>Try another search or choose a different stage.</p><button type="button" className="button button-quiet" onClick={() => { setActiveStage('All roles'); setQuery('') }}>Clear filters</button></div>}</div>
             <div className="list-footer"><span>Showing {filteredJobs.length} of {jobs.length} roles</span><button type="button" className="text-button" onClick={() => { setActiveStage('All roles'); setActiveNav('My roles') }}>View all roles <Icon name="arrow" size={15} /></button></div>
           </section>
 
