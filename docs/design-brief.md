@@ -11,6 +11,7 @@ Roletrail helps a job seeker keep a thoughtful record of opportunities, conversa
 3. Move the role through Saved, Applied, Interview, Offer, or Closed.
 4. Search or filter the list when the pipeline grows.
 5. Keep a private note on a role so a follow-up or preparation detail is not lost.
+6. Compare the saved role text with a personal skill list and review the terms behind the match score.
 
 ## Visual direction
 

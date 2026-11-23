@@ -1,4 +1,4 @@
-import { initializeApp } from 'firebase/app'
+import { initializeApp } from "firebase/app";
 
 const requiredConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -7,8 +7,8 @@ const requiredConfig = {
   storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
-}
+};
 
-export const firebaseConfigured = Object.values(requiredConfig).every(Boolean)
+export const firebaseConfigured = Object.values(requiredConfig).every(Boolean);
 
-export const app = firebaseConfigured ? initializeApp(requiredConfig) : null
+export const app = firebaseConfigured ? initializeApp(requiredConfig) : null;

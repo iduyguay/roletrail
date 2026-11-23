@@ -17,10 +17,9 @@ service cloud.firestore {
         'type',
         'salary',
         'stage',
-        'match',
         'date',
         'followUp',
-        'skills',
+        'description',
         'note',
         'url',
         'createdAt',
@@ -30,9 +29,24 @@ service cloud.firestore {
       && request.resource.data.company is string
       && request.resource.data.role is string
       && request.resource.data.stage in ['Saved', 'Applied', 'Interview', 'Offer', 'Closed']
-      && request.resource.data.match is number
-      && request.resource.data.skills is list
+      && request.resource.data.description is string
       && request.resource.data.note is string;
+    }
+
+    function validProfile() {
+      return request.resource.data.keys().hasOnly(['ownerId', 'skills', 'updatedAt'])
+        && request.resource.data.ownerId == request.auth.uid
+        && request.resource.data.skills is list
+        && request.resource.data.skills.size() > 0
+        && request.resource.data.skills.size() <= 30;
+    }
+
+    match /users/{userId}/profile/{profileId} {
+      allow read: if ownsUser(userId);
+      allow create, update: if ownsUser(userId)
+        && profileId == 'preferences'
+        && validProfile();
+      allow delete: if false;
     }
 
     match /users/{userId}/jobs/{jobId} {
