@@ -17,6 +17,7 @@ The interface will use a restrained editorial style: warm neutral surfaces, deep
 - Add private notes and follow-up dates to an application.
 - Search and filter saved jobs by application stage.
 - View an overview of application activity and upcoming follow-ups.
+- See overdue and upcoming follow-ups for the next seven days, then open a role's note and reminder directly from Insights.
 - Keep each user's application data private to that account with Firestore rules.
 - Try the demo workspace without an account; demo changes stay in the current browser.
 

@@ -125,6 +125,22 @@ function formatDate(value) {
   }).format(new Date(`${value}T12:00:00`));
 }
 
+function localDateKey(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function followUpLabel(value, today) {
+  if (value < today) return "Overdue";
+  if (value === today) return "Today";
+  const tomorrow = new Date(`${today}T12:00:00`);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  if (value === localDateKey(tomorrow)) return "Tomorrow";
+  return formatDate(value);
+}
+
 function readDemoJobs() {
   try {
     const saved = localStorage.getItem("roletrail-demo-jobs");
@@ -555,7 +571,15 @@ function MatchDialog({ job, skills, onClose }) {
   );
 }
 
-function InsightsPanel({ jobs, counts, averageMatch, topRole }) {
+function InsightsPanel({
+  jobs,
+  counts,
+  averageMatch,
+  topRole,
+  today,
+  upcomingFollowUps,
+  onOpenNote,
+}) {
   const stagesInOrder = ["Saved", "Applied", "Interview", "Offer", "Closed"];
   const largestStage = Math.max(
     1,
@@ -612,6 +636,36 @@ function InsightsPanel({ jobs, counts, averageMatch, topRole }) {
           </div>
         </article>
       </div>
+      <section className="follow-up-panel" aria-labelledby="follow-up-title">
+        <div className="follow-up-heading">
+          <div>
+            <span className="insight-label">A gentle nudge</span>
+            <h3 id="follow-up-title">Coming up next</h3>
+          </div>
+          <span className="insights-total">Next 7 days</span>
+        </div>
+        {upcomingFollowUps.length ? (
+          <ul className="follow-up-list">
+            {upcomingFollowUps.map((job) => (
+              <li key={job.id}>
+                <button type="button" onClick={() => onOpenNote(job)}>
+                  <span className="follow-up-company">{job.company}</span>
+                  <span className="follow-up-role">{job.role}</span>
+                  <span
+                    className={`follow-up-date ${job.followUp < today ? "overdue" : ""}`}
+                  >
+                    {followUpLabel(job.followUp, today)}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="follow-up-empty">
+            Nothing due this week. Add a follow-up when you’re ready.
+          </p>
+        )}
+      </section>
       <p className="insight-footnote">
         Match scores compare saved profile skills with words in each role
         description. They describe text overlap only.
@@ -847,7 +901,19 @@ function App() {
     ["Applied", "Interview", "Offer"].includes(job.stage),
   ).length;
   const interviews = counts.Interview || 0;
-  const followUps = jobs.filter((job) => job.followUp).length;
+  const today = localDateKey();
+  const followUpHorizon = new Date();
+  followUpHorizon.setDate(followUpHorizon.getDate() + 7);
+  const lastFollowUpDay = localDateKey(followUpHorizon);
+  const upcomingFollowUps = jobs
+    .filter(
+      (job) =>
+        job.stage !== "Closed" &&
+        /^\d{4}-\d{2}-\d{2}$/.test(job.followUp || "") &&
+        job.followUp <= lastFollowUpDay,
+    )
+    .sort((first, second) => first.followUp.localeCompare(second.followUp));
+  const followUps = upcomingFollowUps.length;
   const jobAnalysis = (job) =>
     analyzeJob(
       `${job.role} ${job.description || ""}`,
@@ -1229,7 +1295,7 @@ function App() {
             </article>
             <article className="metric-card">
               <div className="metric-top">
-                <span>Follow-ups to make</span>
+                <span>Follow-ups due</span>
                 <span className="metric-small-icon">
                   <Icon name="clock" size={16} />
                 </span>
@@ -1238,9 +1304,7 @@ function App() {
                 {String(followUps).padStart(2, "0")}
                 <span className="metric-unit"> reminders</span>
               </div>
-              <div className="metric-foot">
-                A thoughtful nudge goes a long way.
-              </div>
+              <div className="metric-foot">Due or coming up this week.</div>
               <div className="followup-dots">
                 <i />
                 <i />
@@ -1257,6 +1321,9 @@ function App() {
               counts={counts}
               averageMatch={averageMatch}
               topRole={topRole}
+              today={today}
+              upcomingFollowUps={upcomingFollowUps}
+              onOpenNote={openNote}
             />
           )}
 

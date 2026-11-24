@@ -809,6 +809,77 @@ a {
   font-weight: 400;
   text-align: right;
 }
+.follow-up-panel {
+  margin-top: 10px;
+  padding: 15px 16px;
+  border: 1px solid #e5e2d9;
+  border-radius: 5px;
+  background: #fffefa;
+}
+.follow-up-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+.follow-up-heading h3 {
+  margin: 5px 0 0;
+  color: #45443d;
+  font-family: var(--serif);
+  font-size: 18px;
+  font-weight: 400;
+}
+.follow-up-list {
+  display: grid;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.follow-up-list li + li {
+  border-top: 1px solid #efede6;
+}
+.follow-up-list button {
+  display: grid;
+  grid-template-columns: 100px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 38px;
+  padding: 5px 0;
+  color: inherit;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+.follow-up-list button:hover .follow-up-role {
+  color: #4d7867;
+}
+.follow-up-company {
+  color: #77736a;
+  font-size: 10px;
+  font-weight: 600;
+}
+.follow-up-role {
+  overflow: hidden;
+  color: #969187;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.follow-up-date {
+  color: #5e806e;
+  font-family: var(--mono);
+  font-size: 9px;
+}
+.follow-up-date.overdue {
+  color: #bd6650;
+}
+.follow-up-empty {
+  margin: 13px 0 2px;
+  color: #969187;
+  font-size: 10px;
+}
 .insight-footnote {
   margin: 13px 0 0;
   color: #a09b90;
@@ -2032,6 +2103,14 @@ a {
 }
 
 @media (max-width: 620px) {
+  .follow-up-list button {
+    grid-template-columns: 68px minmax(0, 1fr) auto;
+    gap: 8px;
+  }
+  .follow-up-company,
+  .follow-up-role {
+    font-size: 9px;
+  }
   .sidebar {
     display: none;
   }
