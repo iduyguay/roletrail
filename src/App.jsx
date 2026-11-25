@@ -158,17 +158,19 @@ function saveDemoValue(key, value) {
   }
 }
 
-function AddJobDialog({ onClose, onAdd }) {
-  const [form, setForm] = useState({
-    company: "",
-    role: "",
-    location: "",
-    salary: "",
-    stage: "Saved",
-    url: "",
-    description: "",
-    followUp: "",
-  });
+function JobDialog({ job, onClose, onSave }) {
+  const [form, setForm] = useState(() => ({
+    company: job?.company || "",
+    role: job?.role || "",
+    location: job?.location || "",
+    salary: job?.salary || "",
+    stage: job?.stage || "Saved",
+    url: job?.url || "",
+    description: job?.description || "",
+    followUp: /^\d{4}-\d{2}-\d{2}$/.test(job?.followUp || "")
+      ? job.followUp
+      : "",
+  }));
   const [error, setError] = useState("");
 
   function update(event) {
@@ -181,11 +183,11 @@ function AddJobDialog({ onClose, onAdd }) {
   async function submit(event) {
     event.preventDefault();
     if (!form.company.trim() || !form.role.trim()) {
-      setError("Add a company and role to save this listing.");
+      setError("Add a company and role before saving.");
       return;
     }
     try {
-      await onAdd(form);
+      await onSave(form);
     } catch {
       return;
     }
@@ -205,8 +207,10 @@ function AddJobDialog({ onClose, onAdd }) {
       >
         <div className="dialog-heading">
           <div>
-            <span className="eyebrow">A new possibility</span>
-            <h2 id="dialog-title">Save a role</h2>
+            <span className="eyebrow">
+              {job ? "A detail worth keeping" : "A new possibility"}
+            </span>
+            <h2 id="dialog-title">{job ? "Edit this role" : "Save a role"}</h2>
           </div>
           <button
             className="icon-button"
@@ -317,7 +321,8 @@ function AddJobDialog({ onClose, onAdd }) {
               Cancel
             </button>
             <button className="button button-primary" type="submit">
-              Save role <Icon name="arrow" size={16} />
+              {job ? "Update role" : "Save role"}{" "}
+              <Icon name="arrow" size={16} />
             </button>
           </div>
         </form>
@@ -688,6 +693,7 @@ function JobRow({
   analysis,
   onStageChange,
   onToggleNote,
+  onEdit,
   onRemove,
   onViewMatch,
 }) {
@@ -736,7 +742,7 @@ function JobRow({
           <button
             className="icon-button"
             type="button"
-            aria-label={`Change stage for ${job.role} at ${job.company}`}
+            aria-label={`Actions for ${job.role} at ${job.company}`}
             aria-expanded={menuOpen}
             onClick={() => setMenuOpen((open) => !open)}
           >
@@ -744,6 +750,16 @@ function JobRow({
           </button>
           {menuOpen && (
             <div className="row-menu">
+              <button
+                type="button"
+                onClick={() => {
+                  onEdit(job);
+                  setMenuOpen(false);
+                }}
+              >
+                Edit details
+              </button>
+              <span className="menu-rule" />
               {stages.slice(1).map((stage) => (
                 <button
                   type="button"
@@ -784,6 +800,7 @@ function App() {
   const [activeStage, setActiveStage] = useState("All roles");
   const [query, setQuery] = useState("");
   const [showAddDialog, setShowAddDialog] = useState(false);
+  const [editingJob, setEditingJob] = useState(null);
   const [showProfileDialog, setShowProfileDialog] = useState(false);
   const [selectedNote, setSelectedNote] = useState(null);
   const [selectedAnalysis, setSelectedAnalysis] = useState(null);
@@ -988,6 +1005,42 @@ function App() {
     setActiveStage("All roles");
     setQuery("");
     setShowAddDialog(false);
+  }
+
+  async function updateJobDetails(form) {
+    const company = form.company.trim();
+    const changes = {
+      company,
+      initials: company
+        .split(/\s+/)
+        .map((word) => word[0])
+        .slice(0, 2)
+        .join("")
+        .toUpperCase(),
+      role: form.role.trim(),
+      location: form.location.trim(),
+      salary: form.salary.trim(),
+      stage: form.stage,
+      url: form.url.trim(),
+      description: form.description.trim(),
+      followUp: form.followUp,
+    };
+    try {
+      if (user) {
+        const { updateJob } = await import("./data/firestore.js");
+        await updateJob(user.uid, editingJob.id, changes);
+      } else {
+        setJobs((current) =>
+          current.map((job) =>
+            job.id === editingJob.id ? { ...job, ...changes } : job,
+          ),
+        );
+      }
+      setEditingJob(null);
+    } catch {
+      setAppError("This role could not be updated. Please try again.");
+      throw new Error("Could not update role");
+    }
   }
 
   async function changeStage(id, stage) {
@@ -1393,6 +1446,7 @@ function App() {
                     key={job.id}
                     onStageChange={changeStage}
                     onToggleNote={openNote}
+                    onEdit={setEditingJob}
                     onRemove={deleteJob}
                     onViewMatch={openAnalysis}
                   />
@@ -1459,7 +1513,18 @@ function App() {
       </main>
 
       {showAddDialog && (
-        <AddJobDialog onClose={() => setShowAddDialog(false)} onAdd={addJob} />
+        <JobDialog
+          job={null}
+          onClose={() => setShowAddDialog(false)}
+          onSave={addJob}
+        />
+      )}
+      {editingJob && (
+        <JobDialog
+          job={editingJob}
+          onClose={() => setEditingJob(null)}
+          onSave={updateJobDetails}
+        />
       )}
       {showProfileDialog && (
         <ProfileDialog

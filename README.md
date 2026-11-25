@@ -12,6 +12,7 @@ The interface will use a restrained editorial style: warm neutral surfaces, deep
 
 - Create an account and sign in with email and password or Google using Firebase Authentication.
 - Save a job with its title, company, location, source link, and salary range.
+- Update saved role details as an application progresses.
 - Compare the saved role description with a personal skill list and inspect the phrase-level overlap.
 - Track applications through saved, applied, interview, offer, and closed stages.
 - Add private notes and follow-up dates to an application.
