@@ -3,13 +3,13 @@ function normalize(value) {
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
-    .replace(/(?<![\p{L}\p{N}])\.|\.(?![\p{L}\p{N}])/gu, " ")
+    .replace(/\.(?![\p{L}\p{N}])/gu, " ")
     .replace(/[^\p{L}\p{N}+#.]+/gu, " ")
     .trim();
 }
 
 export function analyzeJob(description, skills) {
-  const source = " " + normalize(description) + " ";
+  const source = ` ${normalize(description)} `;
   const seen = new Set();
   const matchedSkills = [];
   const missingSkills = [];
@@ -19,9 +19,7 @@ export function analyzeJob(description, skills) {
     if (!term || seen.has(term)) continue;
     seen.add(term);
 
-    const group = source.includes(" " + term + " ")
-      ? matchedSkills
-      : missingSkills;
+    const group = source.includes(` ${term} `) ? matchedSkills : missingSkills;
     group.push(skill.trim());
   }
 

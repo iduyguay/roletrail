@@ -505,8 +505,9 @@ function MatchDialog({ job, skills, onClose }) {
             <span className="eyebrow">Skill overlap</span>
             <h3>{level}</h3>
             <p>
-              {analysis.matchedSkills.length} of {skills.length} skills appear
-              in the saved role text.
+              {analysis.matchedSkills.length} of{" "}
+              {analysis.matchedSkills.length + analysis.missingSkills.length}{" "}
+              skills appear in the saved role text.
             </p>
           </div>
         </div>
