@@ -32,3 +32,13 @@ Avoid large gradients, excessive rounded cards, generic charts, and decorative i
 - Empty pipeline, filtered empty state, and validation errors.
 - Loading and Firebase error states.
 - Add-role and note dialogs.
+
+## Acceptance checks
+
+- Give the desktop layout a navigation rail, keep the rail compact on tablets, and hide it on phones. The add button, row actions, profile editor, and insights must still be reachable on phones.
+- Save a role, edit its listing details, change its stage, and remove it. Search by role, company, or location and filter by application stage.
+- Save a private note and a follow-up date. Insights show overdue reminders and dates through the next seven days for open roles.
+- Review the matched and missing terms in the skill dialog. Update the profile and check that the score recalculates.
+- In demo mode, reload and check that changes are preserved in the same browser.
+- With Firebase configured, register with email and password, sign out, and sign back in. Test Google sign-in and verify that another account starts with its own role list.
+- Use the production build on phone, tablet, and desktop widths. Check for horizontal overflow and browser console errors.

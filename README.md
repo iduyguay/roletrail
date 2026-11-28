@@ -47,10 +47,14 @@ The score is transparent phrase overlap, not an AI assessment. Roletrail normali
 5. Create a Cloud Firestore database and deploy [`firestore.rules`](firestore.rules) with `firebase deploy --only firestore:rules`.
 6. Run `npm run dev`.
 
+## Project checks
+
+Run `npm test` for the skill-matching tests and `npm run build` to produce the deployable site. Run `npm run preview` to check that build locally.
+
 ## Design and project brief
 
 The interface follows the product and visual brief in [`docs/design-brief.md`](docs/design-brief.md). No external Figma file was supplied for this project.
 
 ## Deployment
 
-The site is configured for static hosting with Netlify. Deploy with `npm run build` and publish the `dist` directory; Firebase credentials must also be configured in the hosting environment.
+The site is configured for static hosting with Netlify. Deploy with `npm run build` and publish the `dist` directory; Set the Firebase web configuration variables from [.env.example](.env.example) in the Netlify build environment. Add the deployed hostname to Firebase Authentication’s authorized domains and deploy the repository’s Firestore rules before testing account creation and cloud sync.
