@@ -794,6 +794,7 @@ function JobRow({
 function App() {
   const [user, setUser] = useState(null);
   const [authReady, setAuthReady] = useState(!firebaseConfigured);
+  const [authError, setAuthError] = useState(false);
   const [jobsReady, setJobsReady] = useState(!firebaseConfigured);
   const [jobs, setJobs] = useState(readDemoJobs);
   const [profile, setProfile] = useState(readDemoProfile);
@@ -821,11 +822,9 @@ function App() {
           if (!currentUser) setJobs([]);
         });
       })
-      .catch(() =>
-        setAppError(
-          "Firebase Authentication could not start. Check the project settings.",
-        ),
-      );
+      .catch(() => {
+        if (active) setAuthError(true);
+      });
     return () => {
       active = false;
       unsubscribe?.();
@@ -950,6 +949,23 @@ function App() {
     null,
   );
 
+  if (authError)
+    return (
+      <main className="app-loading">
+        <div>
+          <p role="alert">
+            Sign-in could not start. Check your connection and try again.
+          </p>
+          <button
+            className="button button-primary"
+            type="button"
+            onClick={() => window.location.reload()}
+          >
+            Try again
+          </button>
+        </div>
+      </main>
+    );
   if (firebaseConfigured && !authReady)
     return <div className="app-loading">Opening your workspace…</div>;
   if (firebaseConfigured && !user)
