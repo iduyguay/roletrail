@@ -1,34 +1,32 @@
 function normalize(value) {
   return value
-    .toLocaleLowerCase()
+    .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
+    .replace(/(?<![\p{L}\p{N}])\.|\.(?![\p{L}\p{N}])/gu, " ")
     .replace(/[^\p{L}\p{N}+#.]+/gu, " ")
     .trim();
 }
 
-function containsSkill(text, skill) {
-  const normalizedText = ` ${normalize(text)} `;
-  const normalizedSkill = normalize(skill);
-  return (
-    normalizedSkill.length > 0 &&
-    normalizedText.includes(` ${normalizedSkill} `)
-  );
-}
-
 export function analyzeJob(description, skills) {
-  const source = normalize(description);
-  const cleanSkills = [
-    ...new Set(skills.map((skill) => skill.trim()).filter(Boolean)),
-  ];
-  const matchedSkills = cleanSkills.filter((skill) =>
-    containsSkill(source, skill),
-  );
-  const missingSkills = cleanSkills.filter(
-    (skill) => !containsSkill(source, skill),
-  );
-  const score = cleanSkills.length
-    ? Math.round((matchedSkills.length / cleanSkills.length) * 100)
+  const source = " " + normalize(description) + " ";
+  const seen = new Set();
+  const matchedSkills = [];
+  const missingSkills = [];
+
+  for (const skill of skills) {
+    const term = normalize(skill);
+    if (!term || seen.has(term)) continue;
+    seen.add(term);
+
+    const group = source.includes(" " + term + " ")
+      ? matchedSkills
+      : missingSkills;
+    group.push(skill.trim());
+  }
+
+  const score = seen.size
+    ? Math.round((matchedSkills.length / seen.size) * 100)
     : 0;
 
   return { score, matchedSkills, missingSkills };
