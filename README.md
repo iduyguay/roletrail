@@ -40,8 +40,8 @@ The score is transparent phrase overlap, not an AI assessment. Roletrail normali
 
 ## Local development
 
-1. Install Node.js 20.19 or newer.
-2. Run `npm install`.
+1. Install Node.js 24.12 or newer. If you use nvm, run `nvm use`.
+2. Run `npm ci`.
 3. Copy `.env.example` to `.env.local` and add the Firebase web app configuration. Without these values, the app opens in demo mode.
 4. Enable Email/Password and Google providers in Firebase Authentication.
 5. Create a Cloud Firestore database and deploy [`firestore.rules`](firestore.rules) with `firebase deploy --only firestore:rules`.
