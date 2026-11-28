@@ -595,8 +595,7 @@ function InsightsPanel({
     <section className="insights-panel" aria-labelledby="insights-title">
       <div className="insights-heading">
         <div>
-          <span className="eyebrow">A read on your search</span>
-          <h2 id="insights-title">Small signals, useful direction.</h2>
+          <h2 id="insights-title">Application insights</h2>
         </div>
         <span className="insights-total">{jobs.length} roles saved</span>
       </div>
@@ -1156,7 +1155,6 @@ function App() {
             <strong>Personal workspace</strong>
             <span>Job search</span>
           </div>
-          <span className="switcher-caret">⌄</span>
         </div>
         <div className="sidebar-label">Workspace</div>
         <nav className="primary-nav" aria-label="Main navigation">
@@ -1198,13 +1196,6 @@ function App() {
           ))}
         </nav>
         <div className="sidebar-bottom">
-          <div className="sidebar-tip">
-            <span className="tip-spark">✳</span>
-            <p>A little progress, often, adds up.</p>
-            <span className="tip-caption">
-              Your search is a process. Keep going.
-            </span>
-          </div>
           <button
             className="nav-item settings-link"
             type="button"
@@ -1374,13 +1365,19 @@ function App() {
                 <span className="metric-unit"> reminders</span>
               </div>
               <div className="metric-foot">Due or coming up this week.</div>
-              <div className="followup-dots">
-                <i />
-                <i />
-                <i />
-                <i />
-                <i />
-              </div>
+              <button
+                className="text-button insights-toggle"
+                type="button"
+                aria-expanded={activeNav === "Insights"}
+                onClick={() =>
+                  setActiveNav(
+                    activeNav === "Insights" ? "Overview" : "Insights",
+                  )
+                }
+              >
+                {activeNav === "Insights" ? "Hide insights" : "View insights"}
+                <Icon name="arrow" size={14} />
+              </button>
             </article>
           </section>
 
@@ -1503,28 +1500,6 @@ function App() {
               </button>
             </div>
           </section>
-
-          <section className="bottom-note">
-            <span className="note-mark">✳</span>
-            <p>
-              <strong>Good work takes a few tries.</strong> Keep each
-              conversation moving at your own pace.
-            </p>
-            <button
-              type="button"
-              className="bottom-link"
-              onClick={() => setActiveNav("Insights")}
-            >
-              A note on the process <Icon name="arrow" size={14} />
-            </button>
-          </section>
-          <footer className="page-footer">
-            <span>
-              Roletrail <span className="footer-dot">·</span> A steadier way
-              forward
-            </span>
-            <span>Made for the in-between</span>
-          </footer>
         </div>
       </main>
 
