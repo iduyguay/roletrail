@@ -1431,15 +1431,14 @@ function App() {
             </div>
             <div
               className="stage-tabs"
-              role="tablist"
+              role="group"
               aria-label="Filter roles by stage"
             >
               {stages.map((stage) => (
                 <button
                   className={`stage-tab ${activeStage === stage ? "active" : ""}`}
                   type="button"
-                  role="tab"
-                  aria-selected={activeStage === stage}
+                  aria-pressed={activeStage === stage}
                   key={stage}
                   onClick={() => setActiveStage(stage)}
                 >
