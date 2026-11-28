@@ -36,7 +36,7 @@ Each signed-in user owns a profile document and a collection of job documents. A
 
 ## Match score
 
-The score is transparent phrase overlap, not an AI assessment. Roletrail normalizes case and accents, then checks each saved profile skill as a whole phrase in the role title and description. The score is the percentage of profile skills found in that text; the detail view shows which terms matched and which were not mentioned.
+The score measures phrase overlap. Roletrail normalizes case and accents, then checks each saved profile skill as a whole phrase in the role title and description. The score is the percentage of profile skills found in that text. The detail view shows which terms matched and which were not mentioned.
 
 ## Local development
 
@@ -57,4 +57,4 @@ The interface follows the product and visual brief in [`docs/design-brief.md`](d
 
 ## Deployment
 
-The site is configured for static hosting with Netlify. Deploy with `npm run build` and publish the `dist` directory; Set the Firebase web configuration variables from [.env.example](.env.example) in the Netlify build environment. Add the deployed hostname to Firebase Authentication’s authorized domains and deploy the repository’s Firestore rules before testing account creation and cloud sync.
+The site is configured for static hosting with Netlify. Deploy with `npm run build` and publish the `dist` directory. Set the Firebase web configuration variables from [.env.example](.env.example) in the Netlify build environment. Add the deployed hostname to Firebase Authentication’s authorized domains and deploy the repository’s Firestore rules before testing account creation and cloud sync.
